@@ -22,8 +22,8 @@ function save_diffs()
         end
         for name_model in names_model
             for diff_fn in diff_fns
-                for idx_NT in idx_NTs
-                    for seed in seeds
+                for seed in seeds
+                    for idx_NT in idx_NTs
                         get_diffs(
                             name_model,
                             name_data,
@@ -69,13 +69,14 @@ function get_diffs(
     (input, target) = obs
     (Lx, Ly, F, T, N) = size(input)
     #
+    println("Getting Diffs: $(name_file_save)")
     dict_result, path_dict_result =
         produce_or_load((;), path_save; filename=name_file_save) do _
             diffs =
                 map(Iterators.product(1:T, 1:N, 1:T, 1:N)) do (T1, N1, T2, N2)
-                    input_t_b = input[:, :, :, T1, N1]
-                    target_t_b = target[:, :, :, T2, N2]
-                    diff = diff_fn(input_t_b, target_t_b)
+                    input_1 = input[:, :, :, T1, N1]
+                    input_2 = input[:, :, :, T2, N2]
+                    diff = diff_fn(input_1, input_2)
                     return diff
                 end
             dict = Dict("diffs" => diffs)
@@ -86,16 +87,19 @@ function get_diffs(
 end
 ##
 function diff_mse(
-    input::AbstractArray{Float32,3}, target::AbstractArray{Float32,3}
+    input_1::AbstractArray{Float32,3}, input_2::AbstractArray{Float32,3}
 )
-    diff = mean(abs2.(input .- target))
+    diff = mean(abs2.(input_1 .- input_2))
     return diff
 end
+##
 function diff_smse(
-    input::AbstractArray{Float32,3}, target::AbstractArray{Float32,3}
+    input_1::AbstractArray{Float32,3}, input_2::AbstractArray{Float32,3}
 )
-    scale = sqrt.(mean(abs2, target; dims=(1, 2))) .+ 1.0f-6
-    diff = mean(abs2.(target .- input) ./ scale)
+    scale_1 = sqrt.(mean(abs2, input_1; dims=(1, 2)))
+    scale_2 = sqrt.(mean(abs2, input_2; dims=(1, 2)))
+    scale = 0.5f0 .* (scale_1 .+ scale_2) .+ 1.0f-6
+    diff = mean(abs2.(input_1 .- input_2) ./ scale)
     return diff
 end
 ##

@@ -48,3 +48,21 @@ function get_L_and_F(name_data::Symbol)
     return L, F
 end
 ##
+function rollout(m, q::AbstractArray{R,5}, ps, st::NamedTuple, T::Int) where {R}
+    @assert size(q, 4) == 1
+    preds = map(1:T) do _
+        q, st = Lux.apply(m, q, ps, st)
+        return q
+    end
+    return last(preds)
+end
+function rollout(m, x::AbstractArray{R,5}, ps, st::NamedTuple) where {R}
+    T = size(x, 4)
+    q = copy(selectdim(x, 4, 1:1))
+    preds = map(1:T) do _
+        q, st = Lux.apply(m, q, ps, st)
+        return q
+    end
+    trajectory = cat(preds...; dims=4)
+    return trajectory
+end

@@ -1,12 +1,22 @@
 function plot_horizon()
     ##
-    name_data = :CE
-    bra_fns = [:bra_C_smse] #, :bra_C_mass, :bra_C_energy]
+    name_datas = (:CE, :NS)
     name_models = (:UNet, :ViT)
     ##
-    for name_model in name_models
-        for bra_fn in bra_fns
-            plot_horizon(name_model, name_data, bra_fn)
+    for name_data in name_datas
+        if name_data == :CE
+            bra_fns = (:bra_C_smse, :bra_C_mass, :bra_C_energy)
+        elseif name_data == :NS
+            bra_fns = (:bra_C_smse,)
+        end
+        for name_model in name_models
+            for bra_fn in bra_fns
+                try
+                    fig = plot_horizon(name_model, name_data, bra_fn)
+                catch e
+                    println(e)
+                end
+            end
         end
     end
     ##
@@ -15,39 +25,64 @@ end
 ##
 function plot_horizon(name_model::Symbol, name_data::Symbol, bra_fn::Symbol)
     ##
-    hats = get_hats(name_model, name_data, bra_fn, bra_g, loss_fn)
+    bra_g = :g_identity
+    if bra_fn == :bra_C_smse
+        loss_fn = :loss_smse
+        title = L"$H_{CC}$ Extrapolation (%$(name_model), %$(name_data))"
+        label_y = "Influence (SMSE)"
+    elseif bra_fn == :bra_C_mass
+        loss_fn = :loss_mass
+        title = L"$H_{MC}$ Extrapolation (%$(name_model), %$(name_data))"
+        label_y = "Influence (Mass)"
+    elseif bra_fn == :bra_C_energy
+        loss_fn = :loss_energy
+        title = L"$H_{EC}$ Extrapolation (%$(name_model), %$(name_data))"
+        label_y = "Influence (Energy)"
+    end
     ##
-    T = size(hats[1], 1)
-    c_inds = CartesianIndices(hats[1])
+    T = 16
+    N = 3
+    c_inds = CartesianIndices((T, N, T, N))
+    #
+    dT = 8
+    range_dT = collect((-dT):dT)
     ## Intra
-    vals_intra = map((-T + 1):(T - 1)) do t
+    vals_intra = map(range_dT) do t
         c_inds_t = filter(ind -> (ind[1] - ind[3] == t) && ind[2] == ind[4], c_inds)
-        vals_array = map(hat -> hat[c_inds_t], hats)
-        vals = vec(stack(vals_array))
-        (_, q_1, q_2, q_3, _) = quantile(vals)
-        return (q_1, q_2, q_3)
+        hats = get_hat_normed(
+            name_model, name_data, bra_fn, bra_g, loss_fn, c_inds_t
+        )
+        return quantile(vec(mean(hats; dims=2)))[2:4]
     end
-    q_1_intra, q_2_intra, q_3_intra = batch(vals_intra)
+    intra_1 = map(v -> v[1], vals_intra)
+    intra_2 = map(v -> v[2], vals_intra)
+    intra_3 = map(v -> v[3], vals_intra)
     ## Inter
-    vals_inter = map((-T + 1):(T - 1)) do t
+    vals_inter = map(range_dT) do t
         c_inds_t = filter(ind -> (ind[1] - ind[3] == t) && ind[2] != ind[4], c_inds)
-        vals_array = map(hat -> hat[c_inds_t], hats)
-        vals = vec(stack(vals_array))
-        (_, q_1, q_2, q_3, _) = quantile(vals)
-        return (q_1, q_2, q_3)
+        hats = get_hat_normed(
+            name_model, name_data, bra_fn, bra_g, loss_fn, c_inds_t
+        )
+        return quantile(vec(mean(hats; dims=2)))[2:4]
     end
+    inter_1 = map(v -> v[1], vals_inter)
+    inter_2 = map(v -> v[2], vals_inter)
+    inter_3 = map(v -> v[3], vals_inter)
     q_1_inter, q_2_inter, q_3_inter = batch(vals_inter)
-    ##
+    ## Plotting
     padding_figure = (1, 5, 1, 1)
-    label_x = "Time Difference"
-    title = "xyz"
-    size_title = 18
-    size_label = 16
-    size_tick_label = 14
     size_figure = (400, 250)
-    size_marker = 8
+    size_title = 22
+    size_label = 20
+    size_label_legend = 20
+    size_tick_label = 18
+    size_marker = 10
     width_line = 1
-    width_whisker = 10
+    width_whisker = 12
+    gap_row = 0.25
+    lims_y = (-0.25, 7)
+    position = :rt
+    label_x = "Time Difference"
     ##
     fig = with_theme(theme_aps(); figure_padding=padding_figure) do
         fig = Figure(; size=size_figure)
@@ -61,43 +96,50 @@ function plot_horizon(name_model::Symbol, name_data::Symbol, bra_fn::Symbol)
             ylabelsize=size_label,
             xticklabelsize=size_tick_label,
             yticklabelsize=size_tick_label,
-            # yscale=log10,
         )
-        t_range_full = (-T + 1):(T - 1)
-        idx = 1:length(t_range_full)
-        idx_plot = idx[abs.(t_range_full[idx]) .< 11]
+        ylims!(ax, lims_y)
         scatter!(
             ax,
-            t_range_full[idx_plot],
-            q_2_intra[idx_plot];
+            range_dT,
+            intra_2;
             label="Intra-class",
+            marker=:circle,
+            markersize=size_marker,
         )
         rangebars!(
             ax,
-            t_range_full[idx_plot],
-            q_1_intra[idx_plot],
-            q_3_intra[idx_plot];
+            range_dT,
+            intra_1,
+            intra_3;
             whiskerwidth=width_whisker,
             linewidth=width_line,
         )
         scatter!(
             ax,
-            t_range_full[idx_plot],
-            q_2_inter[idx_plot];
+            range_dT,
+            inter_2;
             label="Inter-class",
+            marker=:diamond,
+            markersize=size_marker,
         )
         rangebars!(
             ax,
-            t_range_full[idx_plot],
-            q_1_inter[idx_plot],
-            q_3_inter[idx_plot];
+            range_dT,
+            inter_1,
+            inter_3;
             whiskerwidth=width_whisker,
             linewidth=width_line,
         )
-        axislegend(; position=:rt, labelsize=size_label, rowgap=0.25)
+        axislegend(;
+            position=position, labelsize=size_label_legend, rowgap=gap_row
+        )
         return current_figure()
     end
-    # wsave(path_save * ".pdf", fig)
+    ##
+    path_save = plotsdir(
+        "HatMatrix/$(name_data)/$(name_model)/$(bra_fn)/horizon.pdf"
+    )
+    wsave(path_save, fig)
     ##
     return fig
 end

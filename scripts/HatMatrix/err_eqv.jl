@@ -3,7 +3,6 @@ function save_err_eqv()
     ##
     names_data = (:CE, :NS)
     names_model = (:UNet, :ViT)
-    loss_fns = (loss_smse,)
     seeds = (10, 35, 42)
     idx_NTs = (
         (; idx_rp=1, idx_crp=1, idx_rpui=1),
@@ -16,14 +15,19 @@ function save_err_eqv()
     ##
     for name_data in names_data
         if name_data == :CE
+            loss_fns = (loss_smse, loss_mass, loss_energy)
+        elseif name_data == :NS
+            loss_fns = (loss_smse,)
+        end
+        if name_data == :CE
             epoch = 150
         elseif name_data == :NS
             epoch = 100
         end
         for name_model in names_model
             for loss_fn in loss_fns
-                for idx_NT in idx_NTs
-                    for seed in seeds
+                for seed in seeds
+                    for idx_NT in idx_NTs
                         get_err_eqv(
                             name_model,
                             name_data,
@@ -92,6 +96,7 @@ function get_err_eqv(
     # Ket
     err_eqv_array = map(ket_gs) do ket_g
         name_file_save = "err_eqv_$(nameof(ket_g))"
+        println("Getting $(name_file_save): $(dir_batch)")
         dict_result, path_dict_result =
             produce_or_load((;), path_save; filename=name_file_save) do _
                 input_ket_g = ket_g(input) |> dev
@@ -132,7 +137,7 @@ function loss_mass(
     mass_diff = mass_pred .- mass_input
     normalizer = mass_input .+ 1.0f-6
     loss = abs2.(mass_diff) ./ normalizer
-    return loss
+    return dropdims(loss; dims=(1, 2, 3))
 end
 function loss_energy(
     input::AbstractArray{Float32,5},
@@ -144,5 +149,5 @@ function loss_energy(
     energy_diff = energy_pred .- energy_input
     normalizer = energy_input .+ 1.0f-6
     loss = abs2.(energy_diff) ./ normalizer
-    return loss
+    return dropdims(loss; dims=(1, 2, 3))
 end

@@ -23,6 +23,7 @@ include(projectdir("scripts/HatMatrix/eigen.jl"))
 include(projectdir("scripts/HatMatrix/obs_batch.jl"))
 include(projectdir("scripts/HatMatrix/lie.jl"))
 include(projectdir("scripts/HatMatrix/err_eqv.jl"))
+include(projectdir("scripts/HatMatrix/diffs.jl"))
 ##
 function save_hats()
     save_obs_batch()
@@ -30,5 +31,6 @@ function save_hats()
     save_err_eqv()
     save_chi_g_J_ket()
     save_bra_J_g_chi_g_J_ket()
+    save_diffs()
     return nothing
 end

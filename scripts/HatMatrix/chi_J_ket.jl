@@ -232,8 +232,8 @@ function get_J_ket(
     (Lx, Ly, F, T, B) = size(input)
     # Compute b in Ax + (lambda * y) = b
     J_ket_array = map(Iterators.product(1:T, 1:B)) do (t, b)
-        ket_t_b = view(ket,:,:,:,(t:t),b)
-        input_t_b = view(input,:,:,:,(t:t),b)
+        ket_t_b = view(ket, :, :, :, (t:t), b)
+        input_t_b = view(input, :, :, :, (t:t), b)
         sm_input_t_b = Base.Fix1(sm, input_t_b)
         # [p]
         J_ket_t_b = getdata(

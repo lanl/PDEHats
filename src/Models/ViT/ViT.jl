@@ -48,13 +48,3 @@ function (m::ViT)(x::AbstractArray{Float32,5}, ps, st::NamedTuple)
     return m_x, st_
 end
 ##
-function rollout(m::ViT, x::AbstractArray{R,5}, ps, st::NamedTuple;) where {R}
-    T = size(x, 4)
-    q = selectdim(x, 4, 1:1)
-    preds = map(1:T) do t
-        q, st = Lux.apply(m, q, ps, st)
-        return q
-    end
-    trajectory = cat(preds...; dims=4)
-    return trajectory, st
-end

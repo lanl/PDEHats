@@ -20,7 +20,7 @@ function save_eigen()
         for name_model in names_model
             for seed in seeds
                 for idx_NT in idx_NTs
-                    get_eigen(name_model, name_data, seed, epoch, idx_NT)
+                    get_eigen(name_model, name_data, seed, epoch, idx_NT;)
                 end
             end
         end
@@ -40,6 +40,8 @@ function get_eigen(
     ket_g=g_identity,
     tol::Float32=1.0f-2,
     T_max::Int=17,
+    lambda::Float32=1.0f-4,
+    max_or_min::Symbol=:Max,
     dev::MLDataDevices.AbstractDevice=gpu_device(),
 )
 
@@ -60,7 +62,6 @@ function get_eigen(
     )
     dir_save = projectdir(join([dir_model, dir_exp, dir_batch], "/"))
     path_save = join([dir_save, string(nameof(ket_g)), dir_tol], "/")
-    name_file = "eigen"
     ## Load Pathing
     dir_load = projectdir(
         "results/Train/$(name_data)/$(name_model)/seed_$(seed)_ratiotrain_$(srt)_ratioval_$(srv)/",
@@ -98,17 +99,27 @@ function get_eigen(
     )
     eta = transpose(jacobian_operator) * jacobian_operator
     x_0 = randn(Float32, n) |> dev
-    ## Solve
+    ## Solve (Max)
+    if max_or_min == :Max
+        name_file = "eigen_max"
+        which_sorter = EigSorter(abs; rev=true)
+    elseif max_or_min == :Min
+        name_file = "eigen_min"
+        which_sorter = EigSorter(abs; rev=false)
+    end
+    println("Getting $(name_file): $(dir_batch)")
     dict_eigen, path_dict_eigen =
         produce_or_load((;), path_save; filename=name_file) do _
             #
             vals, vecs, info = eigsolve(
-                x -> eta * x,
+                x -> eta * x .+ lambda .* x,
                 x_0,
-                howmany;
+                howmany,
+                which_sorter;
                 tol=tol,
                 verbosity=4,
                 issymmetric=true,
+                orth=ModifiedGramSchmidtIR(),
             )
             # Results
             vals_cpu = vals |> cpu_device()
@@ -120,4 +131,3 @@ function get_eigen(
     ##
     return dict_eigen
 end
-##

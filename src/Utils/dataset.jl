@@ -161,9 +161,12 @@ function get_idx_trajectories_split(
     else
         throw("only name_data == :CE and :NS are supported")
     end
-    (idx_train, idx_val, idx_test) = copy.(
-        splitobs(rng, idx_dataset; at=(ratio_train, ratio_val), shuffle=true)
-    )
+    (idx_train, idx_val, idx_test) =
+        copy.(
+            splitobs(
+                rng, idx_dataset; at=(ratio_train, ratio_val), shuffle=true
+            )
+        )
     ##
     return idx_train, idx_val, idx_test
 end

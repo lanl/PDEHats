@@ -49,35 +49,30 @@ function save_bra_J_g_chi_g_J_ket()
                 end
             end
         end
-    end
-    ##
-    bra_fns = [bra_C_mass, bra_C_energy]
-    bra_gs = [g_identity]
-    for name_data in names_data
+        ## Mass/Energy (CE Only)
         if name_data == :CE
-            epoch = 150
-        elseif name_data == :NS
-            epoch = 100
-        end
-        for name_model in names_model
-            if name_model == :ViT
-                rtol = 5.0f-2
-            elseif name_model == :UNet
-                rtol = 1.5f-2
-            end
-            for seed in seeds
-                for idx_NT in idx_NTs
-                    get_bra_J_g_chi_g_J_ket(
-                        name_model,
-                        name_data,
-                        seed,
-                        epoch,
-                        ket_fn,
-                        bra_fns,
-                        idx_NT;
-                        bra_gs=bra_gs,
-                        rtol=rtol,
-                    )
+            bra_fns = [bra_C_mass, bra_C_energy]
+            bra_gs = [g_identity]
+            for name_model in names_model
+                if name_model == :ViT
+                    rtol = 5.0f-2
+                elseif name_model == :UNet
+                    rtol = 1.5f-2
+                end
+                for seed in seeds
+                    for idx_NT in idx_NTs
+                        get_bra_J_g_chi_g_J_ket(
+                            name_model,
+                            name_data,
+                            seed,
+                            epoch,
+                            ket_fn,
+                            bra_fns,
+                            idx_NT;
+                            bra_gs=bra_gs,
+                            rtol=rtol,
+                        )
+                    end
                 end
             end
         end
@@ -156,6 +151,7 @@ function get_bra_J_g_chi_g_J_ket(
             name_file_save =
                 "$(nameof(bra_fn))_J_$(nameof(bra_g))_" * name_file_load
             path_save = projectdir(dir_load_chi_J_ket * "/observables/")
+            ##
             dict_result, path_dict_result = produce_or_load(
                 (;), path_save; filename=name_file_save
             ) do _
@@ -232,7 +228,7 @@ function get_bra_J_chi_J_ket(
     (Lx, Ly, F, T, B, _, _) = size(J_chi_J_ket)
     #
     bra_J_chi_J_ket_r_array = map(Iterators.product(1:T, 1:B)) do (t, b)
-        J_chi_J_ket_t_b = view(J_chi_J_ket,:,:,:,:,:,t,b)
+        J_chi_J_ket_t_b = view(J_chi_J_ket, :, :, :, :, :, t, b)
         bra_J_chi_J_ket_t_b = bra_fn(input, target, pred, J_chi_J_ket_t_b)
         bra_J_chi_J_ket_t_b_cpu = bra_J_chi_J_ket_t_b |> cpu_device()
         return bra_J_chi_J_ket_t_b_cpu
