@@ -1,5 +1,4 @@
 # PDEHats
-This source code was reviewed and approved with a LANL O-number O4978.
 
 
 This code base is using the [Julia Language](https://julialang.org/) and
