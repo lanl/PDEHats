@@ -19,25 +19,23 @@ function plot_influence_Z()
     return nothing
 end
 function plot_influence_Z(
-    name_model::Symbol, name_data::Symbol, direction::Symbol
+    name_model::Symbol,
+    name_data::Symbol,
+    direction::Symbol;
+    normalization::Symbol=:standard,
 )
     ##
-    loss_fn = :loss_smse
-    bra_fn = :bra_C_smse
-    seeds = (10, 35, 42)
-    idx_NTs = (
-        (; idx_rp=1, idx_crp=1, idx_rpui=1),
-        (; idx_rp=2, idx_crp=2, idx_rpui=2),
-        (; idx_rp=3, idx_crp=3, idx_rpui=3),
-        (; idx_rp=4, idx_crp=4, idx_rpui=4),
-        (; idx_rp=5, idx_crp=5, idx_rpui=5),
-        (; idx_rp=6, idx_crp=6, idx_rpui=6),
-    )
+    if name_data == :CE
+        epoch = 150
+    elseif name_data == :NS
+        epoch = 100
+    end
     ##
     L = 128
-    range_l = circshift(collect(0:(L - 1)), div(L, 2))
+    bra_fn = :loss_mse_scaled
+    range_L = circshift(collect(0:(L - 1)), div(L, 2))
     if direction == :Horizontal
-        bra_gs = map(range_l) do dx
+        bra_gs = map(range_L) do dx
             if dx == 0
                 return Symbol("g_identity")
             else
@@ -45,7 +43,7 @@ function plot_influence_Z(
             end
         end
     elseif direction == :Vertical
-        bra_gs = map(range_l) do dy
+        bra_gs = map(range_L) do dy
             if dy == 0
                 return Symbol("g_identity")
             else
@@ -57,55 +55,66 @@ function plot_influence_Z(
     T = 16
     N = 3
     c_inds = vec(collect(CartesianIndices((T, N, T, N))))
+    c_inds_diag = filter(ind -> ind[1] == ind[3] && ind[2] == ind[4], c_inds)
     ##
     hats_g = map(bra_gs) do bra_g
-        c_inds_diag = filter(ind -> ind[1] == ind[3] && ind[2] == ind[4], c_inds)
         hats = get_hat_normed(
-            name_model, name_data, bra_fn, bra_g, loss_fn, c_inds_diag
+            name_model,
+            name_data,
+            epoch,
+            bra_fn,
+            bra_g,
+            c_inds_diag;
+            normalization=normalization,
         )
-        hats_seeds = map(1:size(hats, 1)) do s
-            return mean(stack(hats[s, :]))
-        end
-        return quantile(hats_seeds)[2:4]
+        vals = quantile(vec(stack(hats)))[2:4]
+        println("$(bra_g): $(vals[2])")
+        return vals
     end
+    ##
     return hats_g
 end
-function plot_influence_Z(name_data::Symbol, direction::Symbol)
+function plot_influence_Z(
+    name_data::Symbol, direction::Symbol; normalization::Symbol=:standard
+)
     ##
-    hats_g_UNet = plot_influence_Z(:UNet, name_data, direction)
-    hats_g_ViT = plot_influence_Z(:ViT, name_data, direction)
+    hats_g_UNet = plot_influence_Z(
+        :UNet, name_data, direction; normalization=normalization
+    )
+    hats_g_ViT = plot_influence_Z(
+        :ViT, name_data, direction; normalization=normalization
+    )
     ## Plotting
     padding_figure = (1, 5, 1, 1)
     size_figure = (800, 500)
-    title = "Symmetry Learning ($(name_data))"
+    title = "Gradient Coherence ($(name_data))"
     label_x = "Translation ($(direction))"
-    label_y = "Influence (SMSE)"
+    label_y = "Influence"
     size_title = 44
     size_label = 40
     size_tick_label = 40
     width_line = 1
-    width_whisker = 12
-    size_marker = 14
+    width_whisker = 6
+    size_marker = 8
     size_label_legend = 36
-    gap_row = 4
+    colgap = 30
     xticks = ([4, 34, 64, 94, 124], ["-60", "-30", "0", "30", "60"])
     ##
     if name_data == :NS
-        lims_y = (2.6, 4.4)
+        lims_y = (1.20, 5.2)
     elseif name_data == :CE
-        lims_y = (2.8, 7.2)
+        lims_y = (0.75, 6.1)
     end
     ##
-    skipper = 2
-    range_x = collect(1:length(hats_g_UNet))[1:skipper:end]
-    U1 = map(p -> p[1], hats_g_UNet)[1:skipper:end]
-    U2 = map(p -> p[2], hats_g_UNet)[1:skipper:end]
-    U3 = map(p -> p[3], hats_g_UNet)[1:skipper:end]
-    V1 = map(p -> p[1], hats_g_ViT)[1:skipper:end]
-    V2 = map(p -> p[2], hats_g_ViT)[1:skipper:end]
-    V3 = map(p -> p[3], hats_g_ViT)[1:skipper:end]
+    range_x = collect(1:length(hats_g_UNet))
+    U1 = map(p -> p[1], hats_g_UNet)
+    U2 = map(p -> p[2], hats_g_UNet)
+    U3 = map(p -> p[3], hats_g_UNet)
+    V1 = map(p -> p[1], hats_g_ViT)
+    V2 = map(p -> p[2], hats_g_ViT)
+    V3 = map(p -> p[3], hats_g_ViT)
     ##
-    fig = with_theme(theme_aps(); figure_padding=padding_figure) do
+    fig = with_theme(theme_aps_2col(); figure_padding=padding_figure) do
         fig = Figure(; size=size_figure)
         ax = Makie.Axis(
             fig[1, 1];
@@ -120,7 +129,7 @@ function plot_influence_Z(name_data::Symbol, direction::Symbol)
             titlesize=size_title,
         )
         ylims!(ax, lims_y)
-        scatterlines!(
+        p1 = scatterlines!(
             ax,
             range_x,
             V2;
@@ -136,7 +145,7 @@ function plot_influence_Z(name_data::Symbol, direction::Symbol)
             whiskerwidth=width_whisker,
             linewidth=width_line,
         )
-        scatterlines!(
+        p2 = scatterlines!(
             ax,
             range_x,
             U2;
@@ -152,11 +161,22 @@ function plot_influence_Z(name_data::Symbol, direction::Symbol)
             whiskerwidth=width_whisker,
             linewidth=width_line,
         )
-        axislegend(; position=:rt, labelsize=size_label_legend, rowgap=gap_row)
+        Legend(
+            fig[2, 1],
+            [p1, p2],
+            ["ViT", "UNet"];
+            orientation=:horizontal,
+            colgap=colgap,
+            tellwidth=false,
+            tellheight=true,
+            labelsize=size_label_legend,
+        )
         return current_figure()
     end
     ##
-    path_save = plotsdir("Eqv/$(name_data)/influence_Z_$(direction).pdf")
+    path_save = plotsdir(
+        "HatMatrix/$(name_data)/Eqv/$(normalization)/influence_Z_$(direction).pdf",
+    )
     wsave(path_save, fig)
     ##
     return fig

@@ -12,6 +12,18 @@ function save_diffs()
         (; idx_rp=4, idx_crp=4, idx_rpui=4),
         (; idx_rp=5, idx_crp=5, idx_rpui=5),
         (; idx_rp=6, idx_crp=6, idx_rpui=6),
+        (; idx_rp=7, idx_crp=7, idx_rpui=7),
+        (; idx_rp=8, idx_crp=8, idx_rpui=8),
+        (; idx_rp=9, idx_crp=9, idx_rpui=9),
+        (; idx_rp=10, idx_crp=10, idx_rpui=10),
+        (; idx_rp=11, idx_crp=11, idx_rpui=11),
+        (; idx_rp=12, idx_crp=12, idx_rpui=12),
+        (; idx_rp=13, idx_crp=13, idx_rpui=13),
+        (; idx_rp=14, idx_crp=14, idx_rpui=14),
+        (; idx_rp=15, idx_crp=15, idx_rpui=15),
+        (; idx_rp=16, idx_crp=16, idx_rpui=16),
+        (; idx_rp=17, idx_crp=17, idx_rpui=17),
+        (; idx_rp=18, idx_crp=18, idx_rpui=18),
     )
     ##
     for name_data in names_data

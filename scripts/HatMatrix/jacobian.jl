@@ -14,8 +14,7 @@ end
 function (J::Jacobian{VJP})(
     res::AbstractVector{R}, v::AbstractVector{R}, α::R, β::R
 ) where {R}
-    ##
-    res .= β .* res
+    # size(v) = [Lx * Ly * F * T * B]
     # [Lx, Ly, F, T * B]
     (Lx, Ly, F, T, B) = J.size_x
     v_r = reshape(v, (Lx, Ly, F, T * B))
@@ -23,20 +22,20 @@ function (J::Jacobian{VJP})(
     J_v_r = getdata(
         Lux.vector_jacobian_product(J.sm_x_r, AutoZygote(), J.ps, v_r)
     )
-    res .+= α .* J_v_r
+    res .= β .* res .+ α .* J_v_r
     return res
 end
 function (J::Jacobian{JVP})(
     res::AbstractVector{R}, v::AbstractVector{R}, α::R, β::R
 ) where {R}
-    res .= β .* res
+    # size(v) = [p]
     # [Lx, Ly, F, T * B]
     J_v = getdata(
         Lux.jacobian_vector_product(J.sm_x_r, AutoForwardDiff(), J.ps, v)
     )
     # [Lx * Ly * F * T * B]
     J_v_r = vec(J_v)
-    res .+= α .* J_v_r
+    res .= β .* res .+ α .* J_v_r
     return res
 end
 ##
@@ -92,4 +91,41 @@ function (J::Jacobian{JVP_FullBatch})(
     res .+= J_v_r
     return res
 end
-##
+## Projected: Abstract JVP/VJP types with batching options
+abstract type AbstractJacobianProjected end
+struct JVP_Projected <: AbstractJacobianProjected end
+struct VJP_Projected <: AbstractJacobianProjected end
+@concrete struct JacobianProjected{J<:AbstractJacobianProjected}
+    sm_x_r
+    ps
+    size_x
+    Q
+end
+function (J::JacobianProjected{VJP_Projected})(
+    res::AbstractVector{R}, v::AbstractVector{R}, α::R, β::R
+) where {R}
+    # [Lx, Ly, F, T * B]
+    (Lx, Ly, F, T, B) = J.size_x
+    v_r = reshape(v, (Lx, Ly, F, T * B))
+    # [p]
+    J_v_r = getdata(
+        Lux.vector_jacobian_product(J.sm_x_r, AutoZygote(), J.ps, v_r)
+    )
+    S_J_v_r = J.Q * J_v_r
+    res .= β .* res .+ α .* S_J_v_r
+    return res
+end
+function (J::JacobianProjected{JVP_Projected})(
+    res::AbstractVector{R}, S_v::AbstractVector{R}, α::R, β::R
+) where {R}
+    # [p]
+    v = transpose(J.Q) * S_v
+    # [Lx, Ly, F, T * B]
+    J_v = getdata(
+        Lux.jacobian_vector_product(J.sm_x_r, AutoForwardDiff(), J.ps, v)
+    )
+    # [Lx * Ly * F * T * B]
+    J_v_r = vec(J_v)
+    res .= β .* res .+ α .* J_v_r
+    return res
+end

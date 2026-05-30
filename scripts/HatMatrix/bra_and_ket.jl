@@ -46,6 +46,14 @@ function ket_C_mass(
     r = get_r_mass(input, target, pred)
     return r
 end
+function ket_C_energy(
+    input::AbstractArray{Float32,5},
+    target::AbstractArray{Float32,5},
+    pred::AbstractArray{Float32,5},
+)
+    r = get_r_energy(input, target, pred)
+    return r
+end
 ## Utils
 function get_r_smse(
     input::AbstractArray{Float32,5},

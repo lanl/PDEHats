@@ -1,7 +1,6 @@
 ##
 include("UNet/UNet.jl")
 include("ViT/ViT.jl")
-include("FNO/FNO.jl")
 ## Utility
 function get_model(
     rng::AbstractRNG, chs::Int, name_model::Symbol, name_data::Symbol
@@ -54,7 +53,7 @@ function rollout(m, q::AbstractArray{R,5}, ps, st::NamedTuple, T::Int) where {R}
         q, st = Lux.apply(m, q, ps, st)
         return q
     end
-    return last(preds)
+    return cat(preds...; dims=4)
 end
 function rollout(m, x::AbstractArray{R,5}, ps, st::NamedTuple) where {R}
     T = size(x, 4)

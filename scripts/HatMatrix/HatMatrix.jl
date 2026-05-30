@@ -14,23 +14,22 @@ using Optimisers
 using LinearAlgebra
 using Printf
 using MLDataDevices
+using Setfield
+##
+include(projectdir("scripts/HatMatrix/obs_batch.jl"))
+include(projectdir("scripts/HatMatrix/diffs.jl"))
+include(projectdir("scripts/HatMatrix/err_eqv.jl"))
+include(projectdir("scripts/HatMatrix/lie.jl"))
+include(projectdir("scripts/HatMatrix/bra_and_ket.jl"))
 ##
 include(projectdir("scripts/HatMatrix/jacobian.jl"))
-include(projectdir("scripts/HatMatrix/bra_and_ket.jl"))
-include(projectdir("scripts/HatMatrix/chi_J_ket.jl"))
-include(projectdir("scripts/HatMatrix/bra_J_chi_J_ket.jl"))
-include(projectdir("scripts/HatMatrix/eigen.jl"))
-include(projectdir("scripts/HatMatrix/obs_batch.jl"))
-include(projectdir("scripts/HatMatrix/lie.jl"))
-include(projectdir("scripts/HatMatrix/err_eqv.jl"))
-include(projectdir("scripts/HatMatrix/diffs.jl"))
+include(projectdir("scripts/HatMatrix/vjp.jl"))
 ##
-function save_hats()
-    save_obs_batch()
-    save_eigen()
-    save_err_eqv()
-    save_chi_g_J_ket()
-    save_bra_J_g_chi_g_J_ket()
-    save_diffs()
-    return nothing
-end
+include(projectdir("scripts/HatMatrix/qr.jl"))
+include(projectdir("scripts/HatMatrix/qr_eqv.jl"))
+include(projectdir("scripts/HatMatrix/eigen.jl"))
+##
+include(projectdir("scripts/HatMatrix/adam.jl"))
+include(projectdir("scripts/HatMatrix/euclidean.jl"))
+include(projectdir("scripts/HatMatrix/euclidean_corrected.jl"))
+##

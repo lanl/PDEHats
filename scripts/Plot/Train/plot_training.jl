@@ -81,7 +81,7 @@ function plot_training_CE()
     width_whisker = 12
     gap_row = 0.25
     ##
-    fig = with_theme(theme_aps(); figure_padding=padding_figure) do
+    fig = with_theme(theme_aps_2col(); figure_padding=padding_figure) do
         fig = Figure(; size=size_figure)
         ax = Makie.Axis(
             fig[1, 1];
@@ -129,7 +129,7 @@ function plot_training_NS()
     skipper = 5
     range_e = vcat(collect(1:epochs)[1:skipper:end], 100)
     ## ViT
-    seeds = (10, 42)
+    seeds = (10, 35, 42)
     val_paths_ViT = PDEHats.find_files(
         projectdir("results/Train/$(name_data)/ViT"),
         "val-fn=loss_mse_scaled",
@@ -186,7 +186,7 @@ function plot_training_NS()
     width_whisker = 12
     gap_row = 0.25
     ##
-    fig = with_theme(theme_aps(); figure_padding=padding_figure) do
+    fig = with_theme(theme_aps_2col(); figure_padding=padding_figure) do
         fig = Figure(; size=size_figure)
         ax = Makie.Axis(
             fig[1, 1];

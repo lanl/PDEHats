@@ -8,7 +8,7 @@ function scatter(
     name_save::String="scatter_1x1",
 )
     ## Log
-    fig = with_theme(theme_aps(); figure_padding=padding_figure) do
+    fig = with_theme(theme_aps_2col(); figure_padding=padding_figure) do
         fig = Figure()
         ax = Makie.Axis(
             fig[1, 1];
@@ -22,7 +22,7 @@ function scatter(
     end
     wsave(projectdir(dir_save * "$(name_save)_log.pdf"), fig)
     ## Linear
-    fig = with_theme(theme_aps(); figure_padding=padding_figure) do
+    fig = with_theme(theme_aps_2col(); figure_padding=padding_figure) do
         fig = Figure()
         ax = Makie.Axis(fig[1, 1]; title=title, xlabel=label_x, ylabel=label_y)
         scatter!(ax, vals)

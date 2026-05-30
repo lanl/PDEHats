@@ -13,9 +13,17 @@ function plot_influence_D4()
     ##
     return nothing
 end
-function plot_influence_D4(name_model::Symbol, name_data::Symbol)
+function plot_influence_D4(
+    name_model::Symbol, name_data::Symbol; normalization::Symbol=:standard
+)
+    ##
+    if name_data == :CE
+        epoch = 150
+    elseif name_data == :NS
+        epoch = 100
+    end
     ## Measurements
-    bra_fn = :bra_C_smse
+    bra_fn = :loss_mse_scaled
     bra_gs = [
         :g_identity,
         :g_rotate_90,
@@ -26,28 +34,31 @@ function plot_influence_D4(name_model::Symbol, name_data::Symbol)
         :g_flip_rotate_180,
         :g_flip_rotate_270,
     ]
-    loss_fn = :loss_smse
     ##
     T = 16
     N = 3
     c_inds = vec(collect(CartesianIndices((T, N, T, N))))
+    c_inds_diag = filter(ind -> ind[1] == ind[3] && ind[2] == ind[4], c_inds)
     ##
     hats_g = map(bra_gs) do bra_g
-        c_inds_diag = filter(ind -> ind[1] == ind[3] && ind[2] == ind[4], c_inds)
         hats = get_hat_normed(
-            name_model, name_data, bra_fn, bra_g, loss_fn, c_inds_diag
+            name_model,
+            name_data,
+            epoch,
+            bra_fn,
+            bra_g,
+            c_inds_diag;
+            normalization=normalization,
         )
-        hats_seeds = map(1:size(hats, 1)) do s
-            return mean(stack(hats[s, :]))
-        end
-        return quantile(hats_seeds)[2:4]
+        return quantile(vec(stack(hats)))[2:4]
     end
+    ##
     return hats_g
 end
-function plot_influence_D4(name_data::Symbol)
+function plot_influence_D4(name_data::Symbol; normalization::Symbol=:standard)
     ##
-    hats_UNet = plot_influence_D4(:UNet, name_data)
-    hats_ViT = plot_influence_D4(:ViT, name_data)
+    hats_UNet = plot_influence_D4(:UNet, name_data; normalization=normalization)
+    hats_ViT = plot_influence_D4(:ViT, name_data; normalization=normalization)
     ##
     range_x = collect(1:length(hats_UNet))
     skipper = 0.125
@@ -55,9 +66,9 @@ function plot_influence_D4(name_data::Symbol)
     ## Plotting
     padding_figure = (1, 5, 1, 1)
     size_figure = (800, 500)
-    title = "Symmetry Learning ($(name_data))"
+    title = "Gradient Coherence ($(name_data))"
     label_x = "Dihedral Group Element"
-    label_y = "Influence (SMSE)"
+    label_y = "Influence"
     size_title = 44
     size_label = 40
     size_tick_label = 40
@@ -65,7 +76,7 @@ function plot_influence_D4(name_data::Symbol)
     width_whisker = 16
     size_marker = 20
     size_label_legend = 36
-    gap_row = 4
+    colgap = 30
     label = [
         L"$e$",
         L"$r$",
@@ -77,12 +88,7 @@ function plot_influence_D4(name_data::Symbol)
         L"$sr^3$",
     ]
     ticks_x = (range_x, label)
-    if name_data == :CE
-        position = :lb
-    elseif name_data == :NS
-        position = :rt
-    end
-    lims_y = (-1.0, 7)
+    lims_y = (-2.0f0, 6.25f0)
     ##
     U1 = collect(map(e -> e[1], hats_UNet))
     U2 = collect(map(e -> e[2], hats_UNet))
@@ -91,7 +97,7 @@ function plot_influence_D4(name_data::Symbol)
     V2 = collect(map(e -> e[2], hats_ViT))
     V3 = collect(map(e -> e[3], hats_ViT))
     ##
-    fig = with_theme(theme_aps(); figure_padding=padding_figure) do
+    fig = with_theme(theme_aps_2col(); figure_padding=padding_figure) do
         fig = Figure(; size=size_figure)
         ax = Makie.Axis(
             fig[1, 1];
@@ -107,7 +113,7 @@ function plot_influence_D4(name_data::Symbol)
             xminorticksvisible=false,
         )
         ylims!(ax, lims_y)
-        scatter!(ax, ranges_x[2], V2; markersize=size_marker, label="ViT")
+        p1 = scatter!(ax, ranges_x[2], V2; markersize=size_marker, label="ViT")
         rangebars!(
             ax,
             ranges_x[2],
@@ -116,7 +122,7 @@ function plot_influence_D4(name_data::Symbol)
             whiskerwidth=width_whisker,
             linewidth=width_line,
         )
-        scatter!(ax, ranges_x[1], U2; markersize=size_marker, label="UNet")
+        p2 = scatter!(ax, ranges_x[1], U2; markersize=size_marker, label="UNet")
         rangebars!(
             ax,
             ranges_x[1],
@@ -125,13 +131,22 @@ function plot_influence_D4(name_data::Symbol)
             whiskerwidth=width_whisker,
             linewidth=width_line,
         )
-        axislegend(;
-            position=position, labelsize=size_label_legend, rowgap=gap_row
+        Legend(
+            fig[2, 1],
+            [p1, p2],
+            ["ViT", "UNet"];
+            orientation=:horizontal,
+            colgap=colgap,
+            tellwidth=false,
+            tellheight=true,
+            labelsize=size_label_legend,
         )
         return current_figure()
     end
     ##
-    path_save = plotsdir("Eqv/$(name_data)/influence_D4.pdf")
+    path_save = plotsdir(
+        "HatMatrix/$(name_data)/Eqv/$(normalization)/influence_D4.pdf"
+    )
     wsave(path_save, fig)
     ##
     return fig

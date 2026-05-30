@@ -1,11 +1,26 @@
 ## Translations
-const L_SHIFT = 127
-for (dx, dy) in Iterators.product((-L_SHIFT):L_SHIFT, (-L_SHIFT):L_SHIFT)
+const L_SHIFT_BOX = 17
+for (dx, dy) in Iterators.product(0:L_SHIFT_BOX, 0:L_SHIFT_BOX)
     if (dx == 0) && (dy == 0)
         fname = Symbol("g_identity")
     else
         fname = Symbol("g_shift_x_$(dx)_y_$(dy)")
     end
+    @eval function $(fname)(trajectory::AbstractArray{Float32,5})
+        return circshift(trajectory, ($(dx), $(dy), 0, 0, 0))
+    end
+end
+const L_SHIFT_LINEAR = 127
+for dx in 1:L_SHIFT_LINEAR
+    dy = 0
+    fname = Symbol("g_shift_x_$(dx)_y_$(dy)")
+    @eval function $(fname)(trajectory::AbstractArray{Float32,5})
+        return circshift(trajectory, ($(dx), $(dy), 0, 0, 0))
+    end
+end
+for dy in 1:L_SHIFT_LINEAR
+    dx = 0
+    fname = Symbol("g_shift_x_$(dx)_y_$(dy)")
     @eval function $(fname)(trajectory::AbstractArray{Float32,5})
         return circshift(trajectory, ($(dx), $(dy), 0, 0, 0))
     end

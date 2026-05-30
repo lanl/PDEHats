@@ -5,7 +5,7 @@ function plot_err_eqv_D4()
     ##
     for name_data in names_data
         try
-            fig = plot_err_eqv_D4(name_data)
+            fig = plot_err_eqv_D4_Q3(name_data)
         catch e
             println(e)
         end
@@ -13,11 +13,9 @@ function plot_err_eqv_D4()
     ##
     return nothing
 end
-function plot_err_eqv_D4(name_model::Symbol, name_data::Symbol)
+function get_err_eqv_D4(name_model::Symbol, name_data::Symbol)
     ##
-    loss_fn = :loss_smse
-    bra_fn = :bra_C_smse
-    bra_gs = (
+    ket_gs = (
         :g_identity,
         :g_rotate_90,
         :g_rotate_180,
@@ -29,9 +27,6 @@ function plot_err_eqv_D4(name_model::Symbol, name_data::Symbol)
     )
     ##
     seeds = (10, 35, 42)
-    if (name_model == :ViT) && (name_data == :NS)
-        seeds = (10, 42)
-    end
     idx_NTs = (
         (; idx_rp=1, idx_crp=1, idx_rpui=1),
         (; idx_rp=2, idx_crp=2, idx_rpui=2),
@@ -39,58 +34,68 @@ function plot_err_eqv_D4(name_model::Symbol, name_data::Symbol)
         (; idx_rp=4, idx_crp=4, idx_rpui=4),
         (; idx_rp=5, idx_crp=5, idx_rpui=5),
         (; idx_rp=6, idx_crp=6, idx_rpui=6),
+        (; idx_rp=7, idx_crp=7, idx_rpui=7),
+        (; idx_rp=8, idx_crp=8, idx_rpui=8),
+        (; idx_rp=9, idx_crp=9, idx_rpui=9),
+        (; idx_rp=10, idx_crp=10, idx_rpui=10),
+        (; idx_rp=11, idx_crp=11, idx_rpui=11),
+        (; idx_rp=12, idx_crp=12, idx_rpui=12),
+        (; idx_rp=13, idx_crp=13, idx_rpui=13),
+        (; idx_rp=14, idx_crp=14, idx_rpui=14),
+        (; idx_rp=15, idx_crp=15, idx_rpui=15),
+        (; idx_rp=16, idx_crp=16, idx_rpui=16),
+        (; idx_rp=17, idx_crp=17, idx_rpui=17),
+        (; idx_rp=18, idx_crp=18, idx_rpui=18),
     )
     ##
-    errs_g = map(bra_gs) do bra_g
+    errs_g = map(ket_gs) do ket_g
         errs_array =
             map(Iterators.product(seeds, idx_NTs)) do (seed, idx_NT)
-                errs_g = get_err(
-                    name_model,
-                    name_data,
-                    bra_fn,
-                    bra_g,
-                    loss_fn,
-                    seed,
-                    idx_NT,
-                )
-                errs_e = get_err(
-                    name_model,
-                    name_data,
-                    bra_fn,
-                    :g_identity,
-                    loss_fn,
-                    seed,
-                    idx_NT,
-                )
+                errs_g = get_err(name_model, name_data, seed, idx_NT; ket_g=ket_g)
+                errs_e = get_err(name_model, name_data, seed, idx_NT)
                 errs = errs_g ./ errs_e
                 return errs
             end
-        return quantile(vec(stack(errs_array)))[2:4]
+        errs_seed = map(1:length(seeds)) do s
+            return quantile(vec(stack(errs_array[s, :])))[2:4]
+        end
+        return errs_seed
     end
+    ##
     return errs_g
 end
-function plot_err_eqv_D4(name_data::Symbol)
+function plot_err_eqv_D4_Q3(name_data::Symbol)
     ##
-    errs_UNet = plot_err_eqv_D4(:UNet, name_data)
-    errs_ViT = plot_err_eqv_D4(:ViT, name_data)
+    errs_g_UNet = get_err_eqv_D4(:UNet, name_data)
+    errs_g_ViT = get_err_eqv_D4(:ViT, name_data)
     ##
-    range_x = collect(1:length(errs_UNet))
+    Q = 3
+    vals_UNet = collect(map(e -> quantile(stack(e)[Q, :])[2:4], errs_g_UNet))
+    UNet_1 = map(v -> v[1], vals_UNet)
+    UNet_2 = map(v -> v[2], vals_UNet)
+    UNet_3 = map(v -> v[3], vals_UNet)
+    vals_ViT = collect(map(e -> quantile(stack(e)[Q, :])[2:4], errs_g_ViT))
+    ViT_1 = map(v -> v[1], vals_ViT)
+    ViT_2 = map(v -> v[2], vals_ViT)
+    ViT_3 = map(v -> v[3], vals_ViT)
+    ##
+    range_x = collect(1:length(errs_g_UNet))
     skipper = 0.125
     ranges_x = (range_x .- skipper, range_x .+ skipper)
     ## Plotting
     padding_figure = (1, 5, 1, 1)
     size_figure = (800, 500)
-    title = "Symmetry Error ($(name_data))"
+    title = "Symmetry Loss ($(name_data), Q3)"
     label_x = "Group Element (Dihedral)"
-    label_y = "Relative SMSE"
+    label_y = "Relative Error"
     size_title = 44
     size_label = 40
     size_tick_label = 40
     width_line = 1
     width_whisker = 16
-    size_marker = 20
+    size_marker = 16
     size_label_legend = 36
-    gap_row = 4
+    colgap = 30
     label = [
         L"$e$",
         L"$r$",
@@ -112,14 +117,7 @@ function plot_err_eqv_D4(name_data::Symbol)
         lims_y = (0.925, 1.25)
     end
     ##
-    U1 = collect(map(e -> e[1], errs_UNet))
-    U2 = collect(map(e -> e[2], errs_UNet))
-    U3 = collect(map(e -> e[3], errs_UNet))
-    V1 = collect(map(e -> e[1], errs_ViT))
-    V2 = collect(map(e -> e[2], errs_ViT))
-    V3 = collect(map(e -> e[3], errs_ViT))
-    ##
-    fig = with_theme(theme_aps(); figure_padding=padding_figure) do
+    fig = with_theme(theme_aps_2col(); figure_padding=padding_figure) do
         fig = Figure(; size=size_figure)
         ax = Makie.Axis(
             fig[1, 1];
@@ -137,31 +135,42 @@ function plot_err_eqv_D4(name_data::Symbol)
         )
         ylims!(ax, lims_y)
         #
-        scatter!(ax, ranges_x[2], V2; markersize=size_marker, label="ViT")
+        p1 = scatter!(
+            ax, ranges_x[2], ViT_2; markersize=size_marker, label="ViT"
+        )
         rangebars!(
             ax,
             ranges_x[2],
-            V1,
-            V3;
+            ViT_1,
+            ViT_3;
             whiskerwidth=width_whisker,
             linewidth=width_line,
         )
-        scatter!(ax, ranges_x[1], U2; markersize=size_marker, label="UNet")
+        p2 = scatter!(
+            ax, ranges_x[1], UNet_2; markersize=size_marker, label="UNet"
+        )
         rangebars!(
             ax,
             ranges_x[1],
-            U1,
-            U3;
+            UNet_1,
+            UNet_3;
             whiskerwidth=width_whisker,
             linewidth=width_line,
         )
-        axislegend(;
-            position=position, labelsize=size_label_legend, rowgap=gap_row
+        Legend(
+            fig[2, 1],
+            [p1, p2],
+            ["ViT", "UNet"];
+            orientation=:horizontal,
+            colgap=colgap,
+            tellwidth=false,
+            tellheight=true,
+            labelsize=size_label_legend,
         )
         return current_figure()
     end
     ##
-    path_save = plotsdir("Eqv/$(name_data)/err_eqv_D4.pdf")
+    path_save = plotsdir("HatMatrix/$(name_data)/Eqv/err_eqv_D4.pdf")
     wsave(path_save, fig)
     ##
     return fig

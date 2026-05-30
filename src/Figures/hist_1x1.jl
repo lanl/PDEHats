@@ -96,7 +96,7 @@ function _hist_1x1(
         -Inf, range(first(lims_axis), last(lims_axis), N_bins), Inf
     )
     ##
-    fig, ax = with_theme(theme_aps(); figure_padding=padding_figure) do
+    fig, ax = with_theme(theme_aps_2col(); figure_padding=padding_figure) do
         fig = Figure(; size=size_fig)
         #
         ax = Makie.Axis(

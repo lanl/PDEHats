@@ -11,32 +11,30 @@ function save_err_eqv()
         (; idx_rp=4, idx_crp=4, idx_rpui=4),
         (; idx_rp=5, idx_crp=5, idx_rpui=5),
         (; idx_rp=6, idx_crp=6, idx_rpui=6),
+        (; idx_rp=7, idx_crp=7, idx_rpui=7),
+        (; idx_rp=8, idx_crp=8, idx_rpui=8),
+        (; idx_rp=9, idx_crp=9, idx_rpui=9),
+        (; idx_rp=10, idx_crp=10, idx_rpui=10),
+        (; idx_rp=11, idx_crp=11, idx_rpui=11),
+        (; idx_rp=12, idx_crp=12, idx_rpui=12),
+        (; idx_rp=13, idx_crp=13, idx_rpui=13),
+        (; idx_rp=14, idx_crp=14, idx_rpui=14),
+        (; idx_rp=15, idx_crp=15, idx_rpui=15),
+        (; idx_rp=16, idx_crp=16, idx_rpui=16),
+        (; idx_rp=17, idx_crp=17, idx_rpui=17),
+        (; idx_rp=18, idx_crp=18, idx_rpui=18),
     )
     ##
     for name_data in names_data
-        if name_data == :CE
-            loss_fns = (loss_smse, loss_mass, loss_energy)
-        elseif name_data == :NS
-            loss_fns = (loss_smse,)
-        end
         if name_data == :CE
             epoch = 150
         elseif name_data == :NS
             epoch = 100
         end
         for name_model in names_model
-            for loss_fn in loss_fns
-                for seed in seeds
-                    for idx_NT in idx_NTs
-                        get_err_eqv(
-                            name_model,
-                            name_data,
-                            seed,
-                            epoch,
-                            idx_NT;
-                            loss_fn=loss_fn,
-                        )
-                    end
+            for seed in seeds
+                for idx_NT in idx_NTs
+                    get_err_eqv(name_model, name_data, seed, epoch, idx_NT;)
                 end
             end
         end
@@ -126,28 +124,14 @@ function loss_smse(
     )
     return loss
 end
+function loss_smse(
+    target::AbstractArray{Float32,5}, pred::AbstractArray{Float32,5}
+)
+    loss_unscaled = abs2.(target .- pred)
+    scale = sqrt.(mean(abs2.(target); dims=(1, 2))) .+ 1.0f-6
+    loss = dropdims(
+        mean(loss_unscaled ./ scale; dims=(1, 2, 3)); dims=(1, 2, 3)
+    )
+    return loss
+end
 ##
-function loss_mass(
-    input::AbstractArray{Float32,5},
-    target::AbstractArray{Float32,5},
-    pred::AbstractArray{Float32,5},
-)
-    mass_input = mean(copy(selectdim(input, 3, 1:1)); dims=(1, 2))
-    mass_pred = mean(copy(selectdim(pred, 3, 1:1)); dims=(1, 2))
-    mass_diff = mass_pred .- mass_input
-    normalizer = mass_input .+ 1.0f-6
-    loss = abs2.(mass_diff) ./ normalizer
-    return dropdims(loss; dims=(1, 2, 3))
-end
-function loss_energy(
-    input::AbstractArray{Float32,5},
-    target::AbstractArray{Float32,5},
-    pred::AbstractArray{Float32,5},
-)
-    energy_input = mean(copy(selectdim(input, 3, 4:4)); dims=(1, 2))
-    energy_pred = mean(copy(selectdim(pred, 3, 4:4)); dims=(1, 2))
-    energy_diff = energy_pred .- energy_input
-    normalizer = energy_input .+ 1.0f-6
-    loss = abs2.(energy_diff) ./ normalizer
-    return dropdims(loss; dims=(1, 2, 3))
-end
